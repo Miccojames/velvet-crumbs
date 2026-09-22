@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-primary: #0B0B0B;
+    --bg-secondary: #11100F;
+    --text-primary: #D8C6BA;
+    --text-secondary: #B4A59D;
+    --text-muted: #81756E;
+    --accent: #C9AE9E;
+    --border-color: rgba(216, 198, 186, 0.25);
+    --light: #F4EEE9;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans), sans-serif;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: #C9AE9E;
+    color: #0B0B0B;
+  }
+}
+
+/* Custom Typography Helpers */
+.font-serif-editorial {
+  font-family: var(--font-cormorant), 'Playfair Display', serif;
+}
+
+.font-script-accent {
+  font-family: var(--font-alex), 'Playfair Display', cursive;
+  font-style: italic;
+}
+
+.font-sans-clean {
+  font-family: var(--font-jakarta), sans-serif;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0B0B0B;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(216, 198, 186, 0.25);
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(216, 198, 186, 0.5);
+}
+
+/* Smooth Fade In Animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Decorative Gold Sparkle & Borders */
+.thin-border {
+  border: 1px solid rgba(216, 198, 186, 0.25);
+}
+
+.thin-border-b {
+  border-bottom: 1px solid rgba(216, 198, 186, 0.25);
+}
+
+.thin-border-t {
+  border-top: 1px solid rgba(216, 198, 186, 0.25);
+}
+
+/* Luxury Glass Panel */
+.luxury-glass {
+  background: rgba(17, 16, 15, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(216, 198, 186, 0.2);
+}
