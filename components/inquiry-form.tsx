@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,17 +8,30 @@ import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { products } from "@/data/products";
-import { CheckCircle2, Copy, ExternalLink } from "lucide-react";
+import { SITE } from "@/lib/site";
+import { submitOrder, type OrderActionResult } from "@/app/actions/orders";
+import { CheckCircle2, Copy, ExternalLink, MessageCircle } from "lucide-react";
 
-const FB_PAGE_URL = "https://www.facebook.com/profile.php?id=61593329624071";
+function isValidFlavor(slug: string | null): slug is string {
+  return !!slug && products.some((p) => p.slug === slug);
+}
+
+// Earliest date a customer can pick: tomorrow (computed at module load,
+// not during render, to keep renders pure).
+const MIN_DATE = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  .toISOString()
+  .split("T")[0];
 
 export function InquiryForm() {
   const searchParams = useSearchParams();
-  const [flavor, setFlavor] = useState("red-velvet");
-  const [submitted, setSubmitted] = useState(false);
+  // Derive the initial flavor from the URL (?flavor=slug) — no effect needed.
+  const [flavor, setFlavor] = useState(() => {
+    const paramFlavor = searchParams.get("flavor");
+    return isValidFlavor(paramFlavor) ? paramFlavor : "red-velvet";
+  });
+  const [result, setResult] = useState<OrderActionResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [formattedMessage, setFormattedMessage] = useState("");
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -29,45 +42,45 @@ export function InquiryForm() {
     message: "",
   });
 
-  useEffect(() => {
-    const paramFlavor = searchParams.get("flavor");
-    if (paramFlavor && products.some((p) => p.slug === paramFlavor)) {
-      setFlavor(paramFlavor);
-    }
-  }, [searchParams]);
+  // Earliest date a customer can pick: tomorrow.
+  const minDate = MIN_DATE;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setResult(null);
 
-    const selectedProduct = products.find((p) => p.slug === flavor);
-    
-    // Format full order text for Facebook Messenger / Page Message
-    const textMsg =
-      `Hello Velvet & Crumbs! I'd like to place an order inquiry:\n\n` +
-      `• Name: ${formData.fullName}\n` +
-      `• Email: ${formData.email}\n` +
-      `• Phone: ${formData.phone}\n` +
-      `• Flavor: ${selectedProduct?.name || flavor} (₱120)\n` +
-      `• Quantity: ${formData.quantity} cans\n` +
-      `• Preferred Date: ${formData.preferredDate || "As soon as possible"}\n` +
-      `• Special Notes: ${formData.message || "None"}`;
+    const res = await submitOrder({
+      fullName: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      flavor,
+      quantity: formData.quantity,
+      preferredDate: formData.preferredDate,
+      message: formData.message,
+    });
 
-    setFormattedMessage(textMsg);
-
-    setTimeout(() => {
-      setLoading(false);
-      setSubmitted(true);
-
-      // Open official Facebook Page directly in a new tab
-      window.open(FB_PAGE_URL, "_blank");
-    }, 600);
+    setResult(res);
+    setLoading(false);
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(formattedMessage);
+    if (!result?.orderText) return;
+    navigator.clipboard.writeText(result.orderText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const resetForm = () => {
+    setResult(null);
+    setFormData({
+      fullName: "",
+      email: "",
+      phone: "",
+      quantity: "1",
+      preferredDate: "",
+      message: "",
+    });
   };
 
   return (
@@ -83,30 +96,33 @@ export function InquiryForm() {
           </h2>
           <div className="flex items-center justify-center gap-3 my-2">
             <div className="h-[1px] w-12 bg-[#D8C6BA]/30" />
-            <span className="text-[#C9AE9E] text-xs">❖</span>
+            <span className="text-[#C9AE9E] text-xs">{"\u2756"}</span>
             <div className="h-[1px] w-12 bg-[#D8C6BA]/30" />
           </div>
           <p className="font-sans-clean text-sm md:text-base text-[#B4A59D] font-light max-w-xl mx-auto">
-            "Submit your order details below to send directly to our official Facebook Page."
+            {"\u201C"}Submit your order details below, then send it to us in one
+            tap via WhatsApp or Messenger.{"\u201D"}
           </p>
         </div>
 
-        {submitted ? (
+        {result?.ok ? (
           <div className="bg-[#11100F] border border-[#D8C6BA]/40 p-8 md:p-10 text-center space-y-6 animate-fadeIn shadow-2xl">
             <div className="flex justify-center text-[#C9AE9E]">
               <CheckCircle2 className="h-16 w-16 stroke-[1.2]" />
             </div>
             <h3 className="font-serif-editorial text-3xl text-[#D8C6BA] uppercase">
-              Inquiry Form Prepared
+              {result.emailed ? "Inquiry Received" : "Inquiry Ready"}
             </h3>
             <p className="font-sans-clean text-base text-[#B4A59D] font-light max-w-md mx-auto">
-              Your inquiry has been formatted and our official Facebook Page has opened! Copy your message below and send it via Message on Facebook.
+              {result.emailed
+                ? "Thank you! We've received your inquiry and will get back to you within 24 hours. For faster service, continue the conversation on WhatsApp or Messenger."
+                : "Your inquiry has been prepared. Tap below to send it to us on WhatsApp or Messenger \u2014 your order details are already filled in."}
             </p>
 
             {/* Formatted Message Preview Box */}
             <div className="bg-[#0B0B0B] border border-[#D8C6BA]/25 p-5 text-left rounded-none space-y-3 font-mono text-xs text-[#D8C6BA] relative">
               <pre className="whitespace-pre-wrap font-sans-clean leading-relaxed">
-                {formattedMessage}
+                {result.orderText}
               </pre>
               <button
                 onClick={copyToClipboard}
@@ -115,54 +131,62 @@ export function InquiryForm() {
                 <Copy className="h-3.5 w-3.5" />
                 <span>{copied ? "COPIED TO CLIPBOARD!" : "COPY INQUIRY TEXT"}</span>
               </button>
-              <p className="text-[11px] text-[#C9AE9E]/90 italic font-sans-clean mt-2">
-                Note: Copy this text and send it to our Facebook Page via Messenger.
-              </p>
             </div>
 
-            {/* Actions */}
+            {/* Actions: one-tap chat deep links */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
               <a
-                href={FB_PAGE_URL}
+                href={result.links?.whatsapp}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex-1"
               >
                 <Button variant="solid" className="w-full py-3 flex items-center justify-center gap-2">
-                  <ExternalLink className="h-4 w-4" />
-                  <span>OPEN FACEBOOK PAGE</span>
+                  <MessageCircle className="h-4 w-4" />
+                  <span>SEND VIA WHATSAPP</span>
                 </Button>
               </a>
-              <Button
-                variant="outline"
-                className="flex-1 py-3"
-                onClick={() => {
-                  setSubmitted(false);
-                  setFormData({
-                    fullName: "",
-                    email: "",
-                    phone: "",
-                    quantity: "1",
-                    preferredDate: "",
-                    message: "",
-                  });
-                }}
+              <a
+                href={result.links?.messenger}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1"
               >
-                SUBMIT ANOTHER INQUIRY
-              </Button>
+                <Button variant="outline" className="w-full py-3 flex items-center justify-center gap-2">
+                  <ExternalLink className="h-4 w-4" />
+                  <span>SEND VIA MESSENGER</span>
+                </Button>
+              </a>
             </div>
+            <Button
+              variant="ghost"
+              className="w-full py-2 text-xs"
+              onClick={resetForm}
+            >
+              SUBMIT ANOTHER INQUIRY
+            </Button>
           </div>
         ) : (
           <form
             onSubmit={handleSubmit}
             className="bg-[#11100F] border border-[#D8C6BA]/25 p-8 md:p-12 space-y-6 shadow-2xl"
           >
+            {result && !result.ok && result.error && (
+              <div
+                role="alert"
+                className="bg-[#2A1512] border border-[#C96B5A]/50 text-[#E8B4A8] px-4 py-3 text-sm font-sans-clean"
+              >
+                {result.error}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Full Name */}
               <div>
                 <Label htmlFor="fullName">Full Name *</Label>
                 <Input
                   id="fullName"
+                  name="fullName"
                   required
                   placeholder="e.g. Maria Santos"
                   value={formData.fullName}
@@ -177,6 +201,7 @@ export function InquiryForm() {
                 <Label htmlFor="email">Email Address *</Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   required
                   placeholder="e.g. maria@example.com"
@@ -194,6 +219,7 @@ export function InquiryForm() {
                 <Label htmlFor="phone">Phone Number *</Label>
                 <Input
                   id="phone"
+                  name="phone"
                   type="tel"
                   required
                   placeholder="e.g. +63 917 123 4567"
@@ -209,12 +235,13 @@ export function InquiryForm() {
                 <Label htmlFor="flavor">Preferred Flavor *</Label>
                 <Select
                   id="flavor"
+                  name="flavor"
                   value={flavor}
                   onChange={(e) => setFlavor(e.target.value)}
                 >
                   {products.map((p) => (
                     <option key={p.slug} value={p.slug} className="bg-[#11100F]">
-                      {p.name} (₱120)
+                      {p.name} ({p.formattedPrice})
                     </option>
                   ))}
                 </Select>
@@ -227,6 +254,7 @@ export function InquiryForm() {
                 <Label htmlFor="quantity">Quantity (Cans) *</Label>
                 <Input
                   id="quantity"
+                  name="quantity"
                   type="number"
                   min="1"
                   max="100"
@@ -243,7 +271,9 @@ export function InquiryForm() {
                 <Label htmlFor="preferredDate">Preferred Delivery/Pickup Date</Label>
                 <Input
                   id="preferredDate"
+                  name="preferredDate"
                   type="date"
+                  min={minDate}
                   value={formData.preferredDate}
                   onChange={(e) =>
                     setFormData({ ...formData, preferredDate: e.target.value })
@@ -257,6 +287,7 @@ export function InquiryForm() {
               <Label htmlFor="message">Special Requests or Notes</Label>
               <Textarea
                 id="message"
+                name="message"
                 placeholder="Let us know if you need gift cards, custom ribbons, or specific delivery instructions..."
                 value={formData.message}
                 onChange={(e) =>
@@ -280,7 +311,7 @@ export function InquiryForm() {
                 >
                   <path d="M12 2C6.477 2 2 6.145 2 11.258c0 2.906 1.455 5.5 3.734 7.185V22l3.424-1.879c.904.25 1.862.387 2.842.387 5.523 0 10-4.145 10-9.25C22 6.145 17.523 2 12 2zm1.03 12.355l-2.585-2.757-5.044 2.757 5.547-5.89 2.646 2.757 4.983-2.757-5.547 5.89z" />
                 </svg>
-                <span>{loading ? "OPENING FACEBOOK PAGE..." : "SEND INQUIRY VIA FACEBOOK PAGE"}</span>
+                <span>{loading ? "SENDING INQUIRY..." : "SEND INQUIRY"}</span>
               </Button>
             </div>
           </form>
@@ -289,11 +320,11 @@ export function InquiryForm() {
         {/* Direct Social Messaging Links */}
         <div className="mt-12 text-center space-y-4 pt-8 border-t border-[#D8C6BA]/15">
           <p className="text-xs text-[#81756E] tracking-widest uppercase">
-            OR VISIT OUR OFFICIAL FACEBOOK PAGE
+            OR MESSAGE US DIRECTLY
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
-              href={FB_PAGE_URL}
+              href={SITE.messengerUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 border border-[#D8C6BA]/30 px-6 py-2.5 text-xs text-[#D8C6BA] hover:border-[#D8C6BA] hover:bg-[#D8C6BA]/10 transition-colors uppercase tracking-widest"
@@ -309,11 +340,11 @@ export function InquiryForm() {
               >
                 <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
               </svg>
-              <span>VISIT OUR FACEBOOK PAGE</span>
+              <span>MESSAGE US ON MESSENGER</span>
             </a>
 
             <a
-              href="https://instagram.com"
+              href={SITE.instagramUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 border border-[#D8C6BA]/30 px-6 py-2.5 text-xs text-[#D8C6BA] hover:border-[#D8C6BA] hover:bg-[#D8C6BA]/10 transition-colors uppercase tracking-widest"

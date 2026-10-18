@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { Logo } from "@/components/logo";
 import { Mail, Phone } from "lucide-react";
+import { SITE } from "@/lib/site";
 
 export function Footer() {
   return (
@@ -49,7 +50,7 @@ export function Footer() {
         {/* Social & Contact Info */}
         <div className="flex flex-wrap justify-center items-center gap-6 text-xs text-[#B4A59D] mb-10">
           <a
-            href="https://instagram.com"
+            href={SITE.instagramUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 hover:text-[#D8C6BA] transition-colors"
@@ -71,7 +72,7 @@ export function Footer() {
           </a>
 
           <a
-            href="https://www.facebook.com/profile.php?id=61593329624071"
+            href={SITE.facebookPageUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 hover:text-[#D8C6BA] transition-colors"
@@ -90,15 +91,21 @@ export function Footer() {
             <span>Velvet & Crumbs Facebook</span>
           </a>
 
-          <div className="flex items-center gap-2">
+          <a
+            href={`tel:+${SITE.whatsappNumber}`}
+            className="flex items-center gap-2 hover:text-[#D8C6BA] transition-colors"
+          >
             <Phone className="h-4 w-4 text-[#C9AE9E]" />
-            <span>+63 917 888 CAKE</span>
-          </div>
+            <span>{SITE.phoneDisplay}</span>
+          </a>
 
-          <div className="flex items-center gap-2">
+          <a
+            href={`mailto:${SITE.email}`}
+            className="flex items-center gap-2 hover:text-[#D8C6BA] transition-colors"
+          >
             <Mail className="h-4 w-4 text-[#C9AE9E]" />
-            <span>hello@velvetandcrumbs.com</span>
-          </div>
+            <span>{SITE.email}</span>
+          </a>
         </div>
 
         {/* Copyright */}

@@ -1,24 +1,33 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Alex_Brush, Plus_Jakarta_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+// Self-hosted fonts (formerly next/font/google). The variable woff2 files are
+// downloaded from Google Fonts and served from public/fonts, so builds never
+// depend on fonts.googleapis.com at compile time.
+const cormorant = localFont({
+  src: "../public/fonts/cormorant-garamond.woff2",
+  weight: "300 700",
+  style: "normal",
+  display: "swap",
   variable: "--font-cormorant",
 });
 
-const alex = Alex_Brush({
-  subsets: ["latin"],
-  weight: ["400"],
+const alex = localFont({
+  src: "../public/fonts/alex-brush.woff2",
+  weight: "400",
+  style: "normal",
+  display: "swap",
   variable: "--font-alex",
 });
 
-const jakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
+const jakarta = localFont({
+  src: "../public/fonts/plus-jakarta-sans.woff2",
+  weight: "200 800",
+  style: "normal",
+  display: "swap",
   variable: "--font-jakarta",
 });
 
